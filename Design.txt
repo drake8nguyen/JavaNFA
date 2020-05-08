@@ -1,0 +1,29 @@
+For the multi-threading component, I use the Java forkjoinpool interface and set a number as the threshold for when the
+multi-thread to be triggered. The match() method of the NFA class would initialize a forkjoinpool with nthreads as
+maximum number of workers inside the pool.
+
+Each thread will be represented by an instance of the RecursiveMatch object which extend the RecursiveTask class. Each
+instance of this object will hold information about the current string it's working on, the current state it's at in the
+machine, the list of states it can go to given a character.
+
+If the number of states reachable from the current state of an instance of this RecursiveMatch object is not above the
+threshold, it will not create any new thread and simply carry out a depth-first search that tries out all the available
+paths based on the given current state and reachable neighbor states. However if the number of reachable states is above
+the threshold, it will cut that list in half and create more instances of RecursiveMatch to be computed. In other words,
+it will ask more sub-tasks to the pool of work to be processed by the threads. This way, not any single thread will have
+to do a large amount of work, as when the work gets to large, it will just cut it in half and defer it to the next
+thread. And if any of this sub-task returns true, the function will return true without caring about the result of the
+other sub-tasks.
+
+On top of this, the NFA will maintain a memo HashMap that records all the result associate with a combination of state
+and string so that if it runs into any combination that has been calculated before it won't have to do the calculation
+again and simply take the result from the memo.
+
+Due to the implementation of an NFAState, this sub-task creation has to be done separately for neighboring states
+reachable by 'epsilon' (createSubTasksOnEmpty()) and for neighboring states reachable by other characters
+(createSubTasksOnC). If any of these two lists grows above the threshold, sub-task will be created.
+
+The RecursiveMatch class will be an inner class of the NFA class. The NFA match() method will initialize the first
+instance of RecursiveMatch using the NFA's start state and all its reachable states. These include states reachable via
+'epsilon' or the first character of the string. This first instance of RecursiveMatch represent the first piece of the
+task to be computed.
